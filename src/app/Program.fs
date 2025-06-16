@@ -1,2 +1,9 @@
-﻿// For more information see https://aka.ms/fsharp-console-apps
+﻿open Library
+open FSharp.Data
+open System.IO
+
+let inputData = InputData.Load (Path.Combine(Directory.GetCurrentDirectory(), "fake-data.txt"))
+
 printfn "Hello from F#"
+
+HomeroomSolver inputData
