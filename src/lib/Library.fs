@@ -115,6 +115,6 @@ module Solver =
 
 let HomeroomSolver (data: InputData) : unit =
     Microsoft.Z3.Global.ToggleWarningMessages(true)
-    Log.Open "test.log" |> ignore
+    // Log.Open "test.log" |> ignore
 
     using (new Context(Dictionary(dict [ ("model", "true") ]))) (fun ctx -> Solver.HomeroomSolver ctx data)
