@@ -108,7 +108,7 @@ module Solver =
                     |})
 
         printfn $"There are {Seq.length studentConsts} students to be assigned to {num_homerooms} homerooms with no more than {max_class_size} students per homeroom."
-        printfn $"All Population Attribute Counts"
+        printfn $"Student Body Attribute Counts"
         printfn "%A" populationCounts
 
         for homeroom in 0 .. num_homerooms do
@@ -120,11 +120,24 @@ module Solver =
             ), 
             ctx.MkInt max_class_size))
 
+        // Create g-test scores for each gender designation
+        let g_test_scores_gender = 
+            Array.mapi 
+                (fun e i -> ctx.MkConst($"_gender_{i}_g_test_score", ctx.IntSort))
+                genderSort.Consts
+
         for gender in genderSort.Consts do
+            // assert that the g-test for this gender across homerooms is lower than the maximum
             for homeroom in 0 .. num_homerooms do
                 s.Assert(ctx.MkLe(ctx.MkAdd(
                     Seq.map
-                        (fun studentConst -> ctx.MkITE(ctx.MkEq(studentConst.homeroom, ctx.MkInt homeroom), ctx.MkInt 1, ctx.MkInt 0) :?> ArithExpr)
+                        (fun studentConst -> 
+                            ctx.MkITE(
+                                ctx.MkAnd(
+                                    ctx.MkEq(studentConst.homeroom, ctx.MkInt homeroom),
+                                    ctx.MkEq(studentConst.gender, gender)),
+                                ctx.MkInt 1, 
+                                ctx.MkInt 0) :?> ArithExpr)
                         studentConsts
                     |> Seq.toArray
                 ), 
