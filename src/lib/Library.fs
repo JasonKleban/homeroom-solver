@@ -36,22 +36,13 @@ module Solver =
         let studentConsts = 
             Seq.mapi 
                 (fun (index : int) (row : InputData.Row) ->
-                    let genderConst = ctx.MkConst($"_{index}_gender", genderSort)
-                    let raceConst = ctx.MkConst($"_{index}_race", raceSort)
-                    let performanceConst = ctx.MkConst($"_{index}_performance", performanceSort)
-                    let specialServicesConst = ctx.MkConst($"_{index}_specialServices", specialServicesSort)
-                    let homeroomConst = ctx.MkIntConst($"_{index}_homeroom")
-
-                    s.Assert(ctx.MkEq(
-                        genderConst,
+                    let genderConst = 
                         match row.Gender.Trim().ToUpperInvariant() with
                         | "F" | "FEMALE" -> genderSort.Consts[0]
                         | "M" | "MALE" -> genderSort.Consts[1]
                         | "O" | "OTHER" -> genderSort.Consts[2]
-                        | _ -> failwith $"""Unrecognized Gender designation in row ${index} ("{row.Name}"): `{row.Gender}`"""))
-
-                    s.Assert(ctx.MkEq(
-                        raceConst,
+                        | _ -> failwith $"""Unrecognized Gender designation in row ${index} ("{row.Name}"): `{row.Gender}`"""
+                    let raceConst = 
                         match row.Race.ToUpperInvariant() with
                         | "BL" -> raceSort.Consts[0]  
                         | "WH" -> raceSort.Consts[1]
@@ -59,22 +50,24 @@ module Solver =
                         | "AS" -> raceSort.Consts[3]
                         | "MU" -> raceSort.Consts[4]
                         | "AM" -> raceSort.Consts[5]
-                        | _ -> failwith $"""Unrecognized Race designation in row ${index} ("{row.Name}"): `{row.Race}`"""))
-
-                    s.Assert(ctx.MkEq(
-                        performanceConst,
+                        | _ -> failwith $"""Unrecognized Race designation in row ${index} ("{row.Name}"): `{row.Race}`"""
+                    let performanceConst = 
                         match row.Performance.Trim().ToUpperInvariant() with
                         | "ABOVE" -> performanceSort.Consts[0]
                         | "AVERAGE" -> performanceSort.Consts[1]
                         | "BELOW" -> performanceSort.Consts[2]
-                        | _ -> failwith $"""Unrecognized Performance designation in row ${index} ("{row.Name}"): `{row.Performance}`"""))
-
-                    s.Assert(ctx.MkEq(
-                        specialServicesConst,
+                        | _ -> failwith $"""Unrecognized Performance designation in row ${index} ("{row.Name}"): `{row.Performance}`"""
+                    let specialServicesConst = 
                         match row.SpecialNeeds.Trim().ToUpperInvariant() with
                         | "Y" | "YES" -> specialServicesSort.Consts[0]
                         | "N" | "NO" -> specialServicesSort.Consts[1]
-                        | _ -> failwith $"""Unrecognized Special Services designation in row ${index} ("{row.Name}"): `{row.SpecialNeeds}`"""))
+                        | _ -> failwith $"""Unrecognized Special Services designation in row ${index} ("{row.Name}"): `{row.SpecialNeeds}`"""
+                    let homeroomConst = ctx.MkIntConst $"_{index}_homeroom"
+
+                    s.Assert(ctx.MkEq(ctx.MkConst($"_{index}_gender", genderSort), genderConst))
+                    s.Assert(ctx.MkEq(ctx.MkConst($"_{index}_race", raceSort), raceConst))
+                    s.Assert(ctx.MkEq(ctx.MkConst($"_{index}_performance", performanceSort), performanceConst))
+                    s.Assert(ctx.MkEq(ctx.MkConst($"_{index}_specialServices", specialServicesSort), specialServicesConst))
 
                     s.Assert(ctx.MkLe(ctx.MkInt 0, homeroomConst))
                     s.Assert(ctx.MkLt(homeroomConst, ctx.MkInt num_homerooms))
@@ -92,7 +85,31 @@ module Solver =
 
         let max_class_size = System.Convert.ToInt32(System.Math.Ceiling(1.02 * float (Seq.length studentConsts) / float num_homerooms))
 
+        // The Es for g-test calculations
+        let populationCounts = 
+            ({|
+                genderCounts = Array.map (fun _ -> 0) genderSort.Consts
+                raceCounts = Array.map (fun _ -> 0) raceSort.Consts
+                performanceCounts = Array.map (fun _ -> 0) performanceSort.Consts
+                specialServicesCounts = Array.map (fun _ -> 0) specialServicesSort.Consts
+            |},
+            studentConsts)
+            ||> Seq.fold
+                (fun acc studentConst -> 
+                    let foundGenderIndex = Array.findIndex ((=) studentConst.gender) genderSort.Consts 
+                    let foundRaceIndex = Array.findIndex ((=) studentConst.race) raceSort.Consts 
+                    let foundPeformanceIndex = Array.findIndex ((=) studentConst.performance) performanceSort.Consts 
+                    let foundSpecialServicesIndex = Array.findIndex ((=) studentConst.specialServices) specialServicesSort.Consts 
+                    {| acc with 
+                        genderCounts = Array.updateAt foundGenderIndex (acc.genderCounts[foundGenderIndex] + 1) acc.genderCounts 
+                        raceCounts = Array.updateAt foundRaceIndex (acc.raceCounts[foundRaceIndex] + 1) acc.raceCounts 
+                        performanceCounts = Array.updateAt foundPeformanceIndex (acc.performanceCounts[foundPeformanceIndex] + 1) acc.performanceCounts 
+                        specialServicesCounts = Array.updateAt foundSpecialServicesIndex (acc.specialServicesCounts[foundSpecialServicesIndex] + 1) acc.specialServicesCounts 
+                    |})
+
         printfn $"There are {Seq.length studentConsts} students to be assigned to {num_homerooms} homerooms with no more than {max_class_size} students per homeroom."
+        printfn $"All Population Attribute Counts"
+        printfn "%A" populationCounts
 
         for homeroom in 0 .. num_homerooms do
             s.Assert(ctx.MkLe(ctx.MkAdd(
@@ -102,6 +119,16 @@ module Solver =
                 |> Seq.toArray
             ), 
             ctx.MkInt max_class_size))
+
+        for gender in genderSort.Consts do
+            for homeroom in 0 .. num_homerooms do
+                s.Assert(ctx.MkLe(ctx.MkAdd(
+                    Seq.map
+                        (fun studentConst -> ctx.MkITE(ctx.MkEq(studentConst.homeroom, ctx.MkInt homeroom), ctx.MkInt 1, ctx.MkInt 0) :?> ArithExpr)
+                        studentConsts
+                    |> Seq.toArray
+                ), 
+                ctx.MkInt max_class_size))
 
         match s.Check() with
         | Status.SATISFIABLE ->
