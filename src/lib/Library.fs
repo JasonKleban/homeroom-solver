@@ -22,8 +22,8 @@ type StudentConst = {
 }
 
 let num_homerooms = 3
-let gender_g_test_max = 2
-let race_g_test_max = 2
+let gender_g_test_max = 100
+let race_g_test_max = 4
 
 module Solver =
     let HomeroomSolver (ctx: Context) (data: InputData) : unit =
@@ -34,7 +34,8 @@ module Solver =
         let specialServicesSort = ctx.MkEnumSort("SpecialServices", [| "YES" ; "NO" |]);
 
         let studentConsts = 
-            Seq.mapi 
+            data.Rows
+            |> Seq.mapi 
                 (fun (index : int) (row : InputData.Row) ->
                     let genderConst = 
                         match row.Gender.Trim().ToUpperInvariant() with
@@ -81,7 +82,7 @@ module Solver =
                         specialServices = specialServicesConst
                         homeroom = homeroomConst
                     })
-                data.Rows
+            |> Seq.toArray
 
         let max_class_size = System.Convert.ToInt32(System.Math.Ceiling(1.02 * float (Seq.length studentConsts) / float num_homerooms))
 
@@ -94,7 +95,7 @@ module Solver =
                 specialServicesCounts = Array.map (fun _ -> 0) specialServicesSort.Consts
             |},
             studentConsts)
-            ||> Seq.fold
+            ||> Array.fold
                 (fun acc studentConst -> 
                     let foundGenderIndex = Array.findIndex ((=) studentConst.gender) genderSort.Consts 
                     let foundRaceIndex = Array.findIndex ((=) studentConst.race) raceSort.Consts 
@@ -107,11 +108,11 @@ module Solver =
                         specialServicesCounts = Array.updateAt foundSpecialServicesIndex (acc.specialServicesCounts[foundSpecialServicesIndex] + 1) acc.specialServicesCounts 
                     |})
 
-        printfn $"There are {Seq.length studentConsts} students to be assigned to {num_homerooms} homerooms with no more than {max_class_size} students per homeroom."
+        printfn $"There are {Array.length studentConsts} students to be assigned to {num_homerooms} homerooms with no more than {max_class_size} students per homeroom."
         printfn $"Student Body Attribute Counts"
         printfn "%A" populationCounts
 
-        for homeroom in 0 .. num_homerooms do
+        for homeroom in 0 .. num_homerooms - 1 do
             s.Assert(ctx.MkLe(ctx.MkAdd(
                 Seq.map
                     (fun studentConst -> ctx.MkITE(ctx.MkEq(studentConst.homeroom, ctx.MkInt homeroom), ctx.MkInt 1, ctx.MkInt 0) :?> ArithExpr)
@@ -121,9 +122,9 @@ module Solver =
             ctx.MkInt max_class_size))
 
         // Create g-test scores-holding consts for each gender designation
-        let g_test_scores_gender = 
+        let half_g_test_scores_gender = 
             Array.mapi 
-                (fun e gender_index -> ctx.MkConst($"_gender_{gender_index}_g_test_score", ctx.IntSort) :?> ArithExpr)
+                (fun gender_index _ -> ctx.MkConst($"_half_gender_{gender_index}_g_test_score", ctx.RealSort) :?> ArithExpr)
                 genderSort.Consts
 
         // Create count-holding consts in each homeroom for each gender designation
@@ -131,20 +132,25 @@ module Solver =
             Array.map
                 (fun homeroom_index ->
                     Array.mapi 
-                        (fun e gender_index -> ctx.MkConst($"_homeroom_{homeroom_index}_gender_{gender_index}_count", ctx.IntSort) :?> ArithExpr)
+                        (fun gender_index _ -> ctx.MkConst($"_homeroom_{homeroom_index}_gender_{gender_index}_count", ctx.RealSort) :?> ArithExpr)
                         genderSort.Consts)
-                [| 0 .. num_homerooms |]
+                [| 0 .. num_homerooms - 1 |]
             
         // Bind the count-holding consts to a tally by homeroom
-        for homeroom_index in [| 0 .. num_homerooms |] do
-            for gender_index in [| 0 .. genderSort.Consts.Length |] do
-                s.Assert(ctx.MkEq(ctx.MkAdd(
-                    Seq.map
-                        (fun studentConst -> ctx.MkITE(ctx.MkAnd(ctx.MkEq(studentConst.gender, genderSort.Consts[gender_index]), ctx.MkEq(studentConst.homeroom, ctx.MkInt homeroom_index)), ctx.MkInt 1, ctx.MkInt 0) :?> ArithExpr)
-                        studentConsts
-                    |> Seq.toArray
-                ), 
-                homeroom_gender_counts[homeroom_index][gender_index]))
+        for homeroom_index in [| 0 .. num_homerooms - 1 |] do
+            for gender_index in [| 0 .. genderSort.Consts.Length - 1 |] do
+                let population_with = 
+                    studentConsts
+                    |> Array.where (fun studentConst -> studentConst.gender = genderSort.Consts[gender_index])
+                    |> Array.map
+                        (fun studentConst -> 
+                            ctx.MkITE(
+                                ctx.MkEq(studentConst.homeroom, ctx.MkInt homeroom_index), 
+                                ctx.MkReal 1, 
+                                ctx.MkReal 0) :?> ArithExpr)
+                s.Assert(ctx.MkEq(
+                    (if Array.isEmpty population_with then ctx.MkReal 0 :> ArithExpr else ctx.MkAdd population_with), 
+                    homeroom_gender_counts[homeroom_index][gender_index]))
 
         // ln_approx(x) = 2(x-1/x+1)
         let ln_approx (x : ArithExpr) = 
@@ -155,60 +161,81 @@ module Solver =
                     ctx.MkAdd [| x ; ctx.MkReal -1 |]))
 
         // g-test summed term: O * ln_approx(O/E)
-        let g_test_summed_term (o : ArithExpr) (e : ArithExpr) =
-            ctx.MkMul(o, ln_approx (ctx.MkDiv(o, e)))
+        let g_test_summed_term (o : ArithExpr) (e : ArithExpr) = ctx.MkMul(o, ln_approx (ctx.MkDiv(o, e)))
 
         // Bind the g-test scores-holding consts to their computation including the 
-        for gender_index in [| 0 .. genderSort.Consts.Length |] do
-            s.Assert(
-                ctx.MkEq(
-                    // 2 * Σ O * ln_approx(O/E)
-                    ctx.MkMul(
-                        ctx.MkReal 2,
-                        ctx.MkAdd(
-                            Seq.map 
-                                (fun homeroom_index -> 
-                                    g_test_summed_term 
-                                        (homeroom_gender_counts[homeroom_index][gender_index])
-                                        (ctx.MkReal populationCounts.genderCounts[gender_index]))
-                                [| 0 .. num_homerooms |]
-                            |> Seq.toArray
-                        )
-                    ),
-                    g_test_scores_gender[gender_index]))
+        for gender_index in [| 0 .. genderSort.Consts.Length - 1 |] do
+            let sum_terms = 
+                Array.choose 
+                    (fun homeroom_index -> 
+                        let attributePopulationCount = populationCounts.genderCounts[gender_index]
+                        if attributePopulationCount = 0 then None
+                        else
+                            Some (g_test_summed_term 
+                                (homeroom_gender_counts[homeroom_index][gender_index])
+                                (ctx.MkReal (attributePopulationCount, num_homerooms))))
+                    [| 0 .. num_homerooms - 1 |]
+            if not (Array.isEmpty sum_terms)
+            then s.Assert(
+                    ctx.MkEq(
+                        // Σ O * ln_approx(O/E)
+                        ctx.MkAdd sum_terms,
+                        half_g_test_scores_gender[gender_index]))
+            else s.Assert(ctx.MkEq(ctx.MkReal 0, half_g_test_scores_gender[gender_index]))
 
-        for score in g_test_scores_gender do
-            s.Assert(ctx.MkLe(score, ctx.MkReal gender_g_test_max))
+        for score in half_g_test_scores_gender do
+            s.Assert(ctx.MkLe(score, ctx.MkReal (gender_g_test_max, 2)))
 
-        for gender in genderSort.Consts do
-            // assert that the g-test for this gender across homerooms is lower than the maximum
-            for homeroom in 0 .. num_homerooms do
-                s.Assert(ctx.MkLe(ctx.MkAdd(
-                    Seq.map
-                        (fun studentConst -> 
-                            ctx.MkITE(
-                                ctx.MkAnd(
-                                    ctx.MkEq(studentConst.homeroom, ctx.MkInt homeroom),
-                                    ctx.MkEq(studentConst.gender, gender)),
-                                ctx.MkInt 1, 
-                                ctx.MkInt 0) :?> ArithExpr)
-                        studentConsts
-                    |> Seq.toArray
-                ), 
-                ctx.MkInt max_class_size))
+        printfn "%A" s
 
         match s.Check() with
         | Status.SATISFIABLE ->
             let model = s.Model
 
-            for homeroom, homeroomStudentConsts in Seq.groupBy (fun studentConst -> System.Int32.Parse ((model.Eval studentConst.homeroom).ToString())) studentConsts do
-                printfn $"Homeroom {homeroom} has {Seq.length homeroomStudentConsts} students"
-        | _ -> printfn $"No solution found"
+            let evalParseInt x = 
+                try
+                    System.Int32.Parse((model.Eval x).ToString()) 
+                with 
+                    _ -> failwith $"Unexpected format in evalParseInt '{x}'"
+
+            let evalParseDecimal x =
+                try
+                    match (model.Eval x).ToString().Split '/' with
+                    | [| num ; den |] -> decimal (System.Int32.Parse num) / decimal (System.Int32.Parse den)
+                    | [| num |] -> decimal (System.Int32.Parse num)
+                    | _ -> failwith $"Unexpected format in evalParseDecimal '{x}'"
+                with
+                    _ -> failwith $"Unexpected format in evalParseDecimal '{x}'"
+
+            for homeroom_index, homeroomStudentConsts in 
+                studentConsts 
+                |> Seq.groupBy (fun studentConst -> evalParseInt studentConst.homeroom) 
+                |> Seq.sortBy (fun (homeroom_index, _) -> homeroom_index) do
+                    printfn "%s" ($"Homeroom {homeroom_index + 1} has {Seq.length homeroomStudentConsts} students.  " +
+                        $"Gender counts: {evalParseInt(homeroom_gender_counts[homeroom_index][0])}, " +
+                        $"{evalParseInt(homeroom_gender_counts[homeroom_index][1])}, " +
+                        $"{evalParseInt(homeroom_gender_counts[homeroom_index][2])}")
+
+            printfn "%s" ($"Gender G-Test Scores: " +
+                        $"%0.3f{2.0M * evalParseDecimal (half_g_test_scores_gender[0])} " +
+                        $"%0.3f{2.0M * evalParseDecimal (half_g_test_scores_gender[1])} " +
+                        $"%0.3f{2.0M * evalParseDecimal (half_g_test_scores_gender[2])}")
+        | _ -> 
+            printfn $"No solution found"
+            //printfn "%A" s.UnsatCore
 
 
 
 let HomeroomSolver (data: InputData) : unit =
-    Microsoft.Z3.Global.ToggleWarningMessages(true)
+    Microsoft.Z3.Global.ToggleWarningMessages true
+    Microsoft.Z3.Global.SetParameter("parallel.enable", "true")
     // Log.Open "test.log" |> ignore
 
-    using (new Context(Dictionary(dict [ ("model", "true") ]))) (fun ctx -> Solver.HomeroomSolver ctx data)
+    // https://microsoft.github.io/z3guide/programming/Parameters
+    using (new Context(Dictionary(dict [ 
+        "model", "true"
+        //"model_validate", "true"
+        //"trace", "true"
+        //"unsat_core", "true"
+        "stats", "true"
+    ]))) (fun ctx -> Solver.HomeroomSolver ctx data)
