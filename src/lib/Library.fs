@@ -22,8 +22,8 @@ type StudentConst = {
 }
 
 let num_homerooms = 3
-let gender_g_test_max = 100
-let race_g_test_max = 4
+let gender_g_test_max = 2
+let race_g_test_max = 2
 
 module Solver =
     let HomeroomSolver (ctx: Context) (data: InputData) : unit =
@@ -157,8 +157,8 @@ module Solver =
             ctx.MkMul(
                 ctx.MkReal 2, 
                 ctx.MkDiv(
-                    ctx.MkAdd [| x ; ctx.MkReal 1 |], 
-                    ctx.MkAdd [| x ; ctx.MkReal -1 |]))
+                    ctx.MkAdd [| x ; ctx.MkReal -1 |], 
+                    ctx.MkAdd [| x ; ctx.MkReal 1 |]))
 
         // g-test summed term: O * ln_approx(O/E)
         let g_test_summed_term (o : ArithExpr) (e : ArithExpr) = ctx.MkMul(o, ln_approx (ctx.MkDiv(o, e)))
