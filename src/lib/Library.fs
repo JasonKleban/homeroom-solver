@@ -120,11 +120,65 @@ module Solver =
             ), 
             ctx.MkInt max_class_size))
 
-        // Create g-test scores for each gender designation
+        // Create g-test scores-holding consts for each gender designation
         let g_test_scores_gender = 
             Array.mapi 
-                (fun e i -> ctx.MkConst($"_gender_{i}_g_test_score", ctx.IntSort))
+                (fun e gender_index -> ctx.MkConst($"_gender_{gender_index}_g_test_score", ctx.IntSort) :?> ArithExpr)
                 genderSort.Consts
+
+        // Create count-holding consts in each homeroom for each gender designation
+        let homeroom_gender_counts = 
+            Array.map
+                (fun homeroom_index ->
+                    Array.mapi 
+                        (fun e gender_index -> ctx.MkConst($"_homeroom_{homeroom_index}_gender_{gender_index}_count", ctx.IntSort) :?> ArithExpr)
+                        genderSort.Consts)
+                [| 0 .. num_homerooms |]
+            
+        // Bind the count-holding consts to a tally by homeroom
+        for homeroom_index in [| 0 .. num_homerooms |] do
+            for gender_index in [| 0 .. genderSort.Consts.Length |] do
+                s.Assert(ctx.MkEq(ctx.MkAdd(
+                    Seq.map
+                        (fun studentConst -> ctx.MkITE(ctx.MkAnd(ctx.MkEq(studentConst.gender, genderSort.Consts[gender_index]), ctx.MkEq(studentConst.homeroom, ctx.MkInt homeroom_index)), ctx.MkInt 1, ctx.MkInt 0) :?> ArithExpr)
+                        studentConsts
+                    |> Seq.toArray
+                ), 
+                homeroom_gender_counts[homeroom_index][gender_index]))
+
+        // ln_approx(x) = 2(x-1/x+1)
+        let ln_approx (x : ArithExpr) = 
+            ctx.MkMul(
+                ctx.MkReal 2, 
+                ctx.MkDiv(
+                    ctx.MkAdd [| x ; ctx.MkReal 1 |], 
+                    ctx.MkAdd [| x ; ctx.MkReal -1 |]))
+
+        // g-test summed term: O * ln_approx(O/E)
+        let g_test_summed_term (o : ArithExpr) (e : ArithExpr) =
+            ctx.MkMul(o, ln_approx (ctx.MkDiv(o, e)))
+
+        // Bind the g-test scores-holding consts to their computation including the 
+        for gender_index in [| 0 .. genderSort.Consts.Length |] do
+            s.Assert(
+                ctx.MkEq(
+                    // 2 * Σ O * ln_approx(O/E)
+                    ctx.MkMul(
+                        ctx.MkReal 2,
+                        ctx.MkAdd(
+                            Seq.map 
+                                (fun homeroom_index -> 
+                                    g_test_summed_term 
+                                        (homeroom_gender_counts[homeroom_index][gender_index])
+                                        (ctx.MkReal populationCounts.genderCounts[gender_index]))
+                                [| 0 .. num_homerooms |]
+                            |> Seq.toArray
+                        )
+                    ),
+                    g_test_scores_gender[gender_index]))
+
+        for score in g_test_scores_gender do
+            s.Assert(ctx.MkLe(score, ctx.MkReal gender_g_test_max))
 
         for gender in genderSort.Consts do
             // assert that the g-test for this gender across homerooms is lower than the maximum
