@@ -1,0 +1,31 @@
+There are 100 students to be assigned to 5 homerooms with no more than 21 students per homeroom.
+  By ELA: ABOVE 26 (↔ 26%), AVERAGE 63 (↔ 63%), BELOW 11 (↔ 11%)
+  By gender: FEMALE 50 (↔ 50%), MALE 48 (↔ 48%), OTHER 2 (↔ 2%)
+  By race: BL 61 (↔ 61%), WH 25 (↔ 25%), HI 6 (↔ 6%), AS 7 (↔ 7%), MU 0 (↔ 0%), AM 1 (↔ 1%)
+  By special services: YES 8 (↔ 8%), NO 92 (↔ 92%)
+
+Homeroom 1 has 19 students.
+  By ELA: ABOVE 0 (↕ 0%) (↔ 0%), AVERAGE 15 (↕ 23.8%) (↔ 78.9%), BELOW 4 (↕ 36.4%) (↔ 21.1%)
+  By gender: FEMALE 11 (↕ 22%) (↔ 57.9%), MALE 8 (↕ 16.7%) (↔ 42.1%), OTHER 0 (↕ 0%) (↔ 0%)
+  By race: BL 13 (↕ 21.3%) (↔ 68.4%), WH 5 (↕ 20%) (↔ 26.3%), HI 1 (↕ 16.7%) (↔ 5.26%), AS 0 (↕ 0%) (↔ 0%), MU 0 (↕ --) (↔ 0%), AM 0 (↕ 0%) (↔ 0%)
+  By special needs: YES 1 (↕ 12.5%) (↔ 5.26%), NO 18 (↕ 19.6%) (↔ 94.7%)
+Homeroom 2 has 21 students.
+  By ELA: ABOVE 5 (↕ 19.2%) (↔ 23.8%), AVERAGE 14 (↕ 22.2%) (↔ 66.7%), BELOW 2 (↕ 18.2%) (↔ 9.52%)
+  By gender: FEMALE 10 (↕ 20%) (↔ 47.6%), MALE 10 (↕ 20.8%) (↔ 47.6%), OTHER 1 (↕ 50%) (↔ 4.76%)
+  By race: BL 13 (↕ 21.3%) (↔ 61.9%), WH 6 (↕ 24%) (↔ 28.6%), HI 1 (↕ 16.7%) (↔ 4.76%), AS 1 (↕ 14.3%) (↔ 4.76%), MU 0 (↕ --) (↔ 0%), AM 0 (↕ 0%) (↔ 0%)
+  By special needs: YES 3 (↕ 37.5%) (↔ 14.3%), NO 18 (↕ 19.6%) (↔ 85.7%)
+Homeroom 3 has 18 students.
+  By ELA: ABOVE 4 (↕ 15.4%) (↔ 22.2%), AVERAGE 12 (↕ 19%) (↔ 66.7%), BELOW 2 (↕ 18.2%) (↔ 11.1%)
+  By gender: FEMALE 8 (↕ 16%) (↔ 44.4%), MALE 10 (↕ 20.8%) (↔ 55.6%), OTHER 0 (↕ 0%) (↔ 0%)
+  By race: BL 11 (↕ 18%) (↔ 61.1%), WH 4 (↕ 16%) (↔ 22.2%), HI 1 (↕ 16.7%) (↔ 5.56%), AS 2 (↕ 28.6%) (↔ 11.1%), MU 0 (↕ --) (↔ 0%), AM 0 (↕ 0%) (↔ 0%)
+  By special needs: YES 0 (↕ 0%) (↔ 0%), NO 18 (↕ 19.6%) (↔ 100%)
+Homeroom 4 has 21 students.
+  By ELA: ABOVE 12 (↕ 46.2%) (↔ 57.1%), AVERAGE 6 (↕ 9.52%) (↔ 28.6%), BELOW 3 (↕ 27.3%) (↔ 14.3%)
+  By gender: FEMALE 10 (↕ 20%) (↔ 47.6%), MALE 10 (↕ 20.8%) (↔ 47.6%), OTHER 1 (↕ 50%) (↔ 4.76%)
+  By race: BL 11 (↕ 18%) (↔ 52.4%), WH 6 (↕ 24%) (↔ 28.6%), HI 2 (↕ 33.3%) (↔ 9.52%), AS 2 (↕ 28.6%) (↔ 9.52%), MU 0 (↕ --) (↔ 0%), AM 0 (↕ 0%) (↔ 0%)
+  By special needs: YES 1 (↕ 12.5%) (↔ 4.76%), NO 20 (↕ 21.7%) (↔ 95.2%)
+Homeroom 5 has 21 students.
+  By ELA: ABOVE 5 (↕ 19.2%) (↔ 23.8%), AVERAGE 16 (↕ 25.4%) (↔ 76.2%), BELOW 0 (↕ 0%) (↔ 0%)
+  By gender: FEMALE 11 (↕ 22%) (↔ 52.4%), MALE 10 (↕ 20.8%) (↔ 47.6%), OTHER 0 (↕ 0%) (↔ 0%)
+  By race: BL 13 (↕ 21.3%) (↔ 61.9%), WH 4 (↕ 16%) (↔ 19%), HI 1 (↕ 16.7%) (↔ 4.76%), AS 2 (↕ 28.6%) (↔ 9.52%), MU 0 (↕ --) (↔ 0%), AM 1 (↕ 100%) (↔ 4.76%)
+  By special needs: YES 3 (↕ 37.5%) (↔ 14.3%), NO 18 (↕ 19.6%) (↔ 85.7%)
